@@ -209,7 +209,6 @@ __marimo__/
 # --- Local automation files (custom additions) ---
 MyCreds.env
 springahead_current_week.json
-INVOICE (Template).xls
 *.pdf
 __pycache__/
 
