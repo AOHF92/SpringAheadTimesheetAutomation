@@ -50,6 +50,13 @@ Install these with pip:
 
 ---
 
+## ⚙️ Installation & Setup Guide
+
+For the full detailed setup steps, see:  
+
+➡️ [📦 Full Installation & Setup Guide](docs/SETUP_GUIDE.md)
+
+---
 ## Usage
 
 ### Option A – Run everything via the master script
@@ -61,12 +68,12 @@ python timesheet_master.py
 
 What it does:
 
-- Runs Step 1 – logs into SpringAhead, scrapes the current week, and writes springahead_current_week.json.
+- Runs Step 1 – logs into SpringAhead, scrapes the current week, and writes ```springahead_current_week.json```.
 - Runs Step 2 – opens the Excel template, fills the invoice, and exports a PDF.
 
 At the end you should have:
 
-- springahead_current_week.json with your worked days.
+- ```springahead_current_week.json``` with your worked days.
 - A new PDF invoice in the same folder, named like:
 
 ```text
@@ -75,7 +82,7 @@ J. Pepin INV (11 - 1 al 15 - 2025).pdf
 Note:
 > The short consultant name (e.g. J. Pepin) is derived from the full name stored in cell B6 of the template or entered on first run.
 
-If you prefer, you can also double-click timesheet_master.py in Explorer.
+If you prefer, you can also double-click ```timesheet_master.py``` in Explorer.
 The script will pause at the end so you can read any messages before the window closes.
 
 ### Option B – Run steps individually
@@ -86,7 +93,7 @@ python springahead_step1_fetch.py
 ```
 This will:
 
-- Prompt for credentials (or use MyCreds.env).
+- Prompt for credentials (or use ```MyCreds.env```).
 - Log into SpringAhead.
 - Click “Add Time” and switch to List view.
 - Scrape all time rows with hours > 0.
@@ -101,8 +108,8 @@ python springahead_step2_invoice.py
 ```
 This expects:
 
-- springahead_current_week.json in the same folder.
-- INVOICE (Template).xls in the same folder.
+- ```springahead_current_week.json``` in the same folder.
+- ```INVOICE (Template).xls``` in the same folder.
 
 It will:
 
@@ -114,28 +121,28 @@ It will:
 ---
 
 ## File glossary
-- timesheet_master.py
+- ```timesheet_master.py```
 Orchestrator script. Runs Step 1 and Step 2 in sequence, with error handling and “press Enter to exit…” behavior when double-clicked.
-- springahead_step1_fetch.py  
+- ```springahead_step1_fetch.py``` 
 Playwright scraper:  
-  - Loads credentials from MyCreds.env (or interactively).
+  - Loads credentials from ```MyCreds.env``` (or interactively).
   - Logs into SpringAhead.
   - Switches to List view.
   - Scrapes worked days from the current timecard.
-  - Saves them to springahead_current_week.json.
-- springahead_step2_invoice.py
+  - Saves them to ```springahead_current_week.json```.
+- ```springahead_step2_invoice.py```
 Excel automation:   
-   - Reads springahead_current_week.json.
+   - Reads ```springahead_current_week.json```.
    - Detects the invoice period (first or second half of the month).
    - Calculates morning/afternoon time blocks based on total hours.
    - Fills the invoice template and exports a PDF.
-- INVOICE (Template).xls
+- ```INVOICE (Template).xls```
 Local Excel Invoice Template
 Contains your layout, rates, and formulas.
-- MyCreds.env
+- ```MyCreds.env```
 Local credentials file containing SPRINGAHEAD_COMPANY, SPRINGAHEAD_USERNAME, and SPRINGAHEAD_PASSWORD.
 Plain-text. Keep it private
-- springahead_current_week.json
+- ```springahead_current_week.json```
 Generated Json File with structure:
 ```json
 {
