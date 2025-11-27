@@ -21,68 +21,84 @@ import os
 from pathlib import Path
 from getpass import getpass
 import json
+import sys
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 from dotenv import load_dotenv
 
+def get_app_root() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
 
 LOGIN_URL = (
     "https://my.springahead.com/go/Account/Logon"
     "?ReturnUrl=%2Fvt%2Fgo%3FHome%26tokenid%3Dvte"
 )
 
-ENV_PATH = Path("MyCreds.env")
-OUTPUT_JSON = Path("springahead_current_week.json")
+APP_ROOT = get_app_root()
+ENV_PATH = APP_ROOT / "MyCreds.env"
+OUTPUT_JSON = APP_ROOT / "springahead_current_week.json"
 
 
 def load_credentials():
     """
-    Try to load credentials from .env.
-    If missing/incomplete, prompt the user and optionally write .env.
+    Load SpringAhead credentials in this order:
+      1. Environment variables
+      2. .env file
+      3. Interactive prompt (only if still incomplete)
     """
-    creds = {
-        "company": None,
-        "username": None,
-        "password": None,
-    }
+    # Debug tracking
+    print(f"[DEBUG] CWD: {Path.cwd()}")
+    print(f"[DEBUG] Looking for creds at: {ENV_PATH} (exists={ENV_PATH.exists()})")
 
-    env_ok = False
+    # --- 1) Environment variables (GUI sets these) ---
+    company = os.getenv("SPRINGAHEAD_COMPANY") or ""
+    username = os.getenv("SPRINGAHEAD_USERNAME") or ""
+    password = os.getenv("SPRINGAHEAD_PASSWORD") or ""
+
+    if company and username and password:
+        return {
+            "company": company,
+            "username": username,
+            "password": password,
+        }
+
+    # --- 2) Try .env file ---
     if ENV_PATH.exists():
         load_dotenv(dotenv_path=ENV_PATH)
-        creds["company"] = os.getenv("SPRINGAHEAD_COMPANY") or ""
-        creds["username"] = os.getenv("SPRINGAHEAD_USERNAME") or ""
-        creds["password"] = os.getenv("SPRINGAHEAD_PASSWORD") or ""
 
-        if all(creds.values()):
-            env_ok = True
+        company = os.getenv("SPRINGAHEAD_COMPANY") or company
+        username = os.getenv("SPRINGAHEAD_USERNAME") or username
+        password = os.getenv("SPRINGAHEAD_PASSWORD") or password
 
-    if env_ok:
-        print("Loaded SpringAhead credentials from MyCreds.env.")
-        return creds
+        if company and username and password:
+            return {
+                "company": company,
+                "username": username,
+                "password": password,
+            }
 
-    # Otherwise, ask interactively
-    print("No complete .env found. Please enter your SpringAhead credentials.")
-    company = input("Company (e.g., MetroIT): ").strip()
-    username = input("Login Name: ").strip()
-    password = getpass("Password: ").strip()
+    if getattr(sys, "frozen", False):
+        # Running inside a bundled EXE: no interactive console available
+        raise RuntimeError(
+        "No credentials found in MyCreds.env or environment variables. "
+        "Please create MyCreds.env next to the EXE or use the GUI fields."
+       )
+    print("No complete .env or environment variables found. Please enter your SpringAhead credentials.")
+    # If you're running under Gooey, this will hang, so for GUI usage
+    # you should ALWAYS fill the fields or have a valid .env.
+    company = company or input("Company: ").strip()
+    username = username or input("Login name: ").strip()
+    password = password or getpass("Password: ")
 
-    creds["company"] = company
-    creds["username"] = username
-    creds["password"] = password
+    return {
+        "company": company,
+        "username": username,
+        "password": password,
+    }
 
-    # Offer to create/update .env
-    save = input("Save these credentials to .env for next time? [y/N]: ").strip().lower()
-    if save == "y":
-        with ENV_PATH.open("w", encoding="utf-8") as f:
-            f.write(f"SPRINGAHEAD_COMPANY={company}\n")
-            f.write(f"SPRINGAHEAD_USERNAME={username}\n")
-            f.write(f"SPRINGAHEAD_PASSWORD={password}\n")
-        print("Saved credentials to MyCreds.env (plain text – keep this file private).")
-
-    return creds
-
-
-def fetch_worked_days(creds, headless=False):
+def fetch_worked_days(creds, headless=True):
     results = []
 
     with sync_playwright() as p:
@@ -105,6 +121,22 @@ def fetch_worked_days(creds, headless=False):
         page.locator("#login_body input#Password").fill(creds["password"])
 
         page.get_by_role("button", name="Log In").click()
+        
+        # give the page a moment to redraw after login
+        page.wait_for_load_state("networkidle")
+
+        # Look for login-error banner
+        # Use the visible text from the page; no extra quotes needed
+        error_banner = page.locator("text=Login information entered is invalid. Please try again.")
+
+        if error_banner.is_visible():
+            # Optional: screenshot for debugging
+            page.screenshot(path="springahead_login_error.png", full_page=True)
+
+            raise RuntimeError(
+                "SpringAhead login failed: login information is invalid. "
+                "Please check your company, username, or password (MyCreds.env / GUI)."
+            )
 
         # --- HOME PAGE (Add Time) ---
         try:
@@ -115,6 +147,7 @@ def fetch_worked_days(creds, headless=False):
                 "Could not find 'Add Time' after logging in. "
                 "Check credentials or if the UI changed."
             )
+
 
         print("Clicking 'Add Time' to open current timecard...")
         page.get_by_text("Add Time", exact=True).click()
@@ -179,7 +212,17 @@ def fetch_worked_days(creds, headless=False):
 
 def main():
     creds = load_credentials()
-    worked_days = fetch_worked_days(creds, headless=False)
+
+    # Decide headless mode from env (default: headless ON)
+    #
+    # SPRINGAHEAD_HEADLESS values treated as "off" (headed):
+    #   0, "false", "no", "off"  (case-insensitive)
+    #
+    # Anything else (or unset) => headless = True
+    raw = os.getenv("SPRINGAHEAD_HEADLESS", "1").strip().lower()
+    headless = raw not in ("0", "false", "no", "off")
+
+    worked_days = fetch_worked_days(creds, headless=headless)
 
     if not worked_days:
         print("No worked days with hours > 0 found on this timecard.")
@@ -189,12 +232,10 @@ def main():
     for entry in worked_days:
         print(f"- {entry['date']} | {entry['hours']} hours | {entry['project']} ({entry['type']})")
 
-    # Save to JSON for the Excel step later
-    data = {
-        "entries": worked_days,
-    }
+    data = {"entries": worked_days}
     OUTPUT_JSON.write_text(json.dumps(data, indent=2), encoding="utf-8")
     print(f"\nSaved data to {OUTPUT_JSON.resolve()}")
+
 
 
 if __name__ == "__main__":

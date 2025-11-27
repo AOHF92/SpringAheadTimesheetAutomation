@@ -13,12 +13,18 @@ import os
 import json
 import calendar
 import re
+import sys
 from datetime import datetime, timedelta
 
 import win32com.client as win32
+import win32timezone
 
+def get_app_root():
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = get_app_root()
 JSON_PATH = os.path.join(SCRIPT_DIR, "springahead_current_week.json")
 TEMPLATE_PATH = os.path.join(SCRIPT_DIR, "INVOICE (Template).xls")
 
@@ -161,14 +167,31 @@ def main():
     else:
         existing_name = ""
 
-    if existing_name:
+    # First priority: env var (set by GUI)
+    full_name_env = os.getenv("SPRINGAHEAD_FULL_NAME", "").strip()
+
+    if full_name_env:
+        full_name_input = full_name_env
+        # also write it into the template so next runs don't need GUI
+        consultant_cell.Value = full_name_input
+
+    elif existing_name:
+        # Use name already in the template
         full_name_input = existing_name
+
     else:
-        full_name_input = input("Enter your full name (first + one or two last names): ").strip()
+        # CLI fallback only – in GUI this would hang, so make sure you
+        # either fill the Consultant cell in Excel or use the GUI field.
+        full_name_input = input(
+            "Enter your full name (first + one or two last names): "
+        ).strip()
         while not full_name_input:
-            full_name_input = input("Name cannot be empty. Please enter full name: ").strip()
+            full_name_input = input(
+                "Name cannot be empty. Please enter full name: "
+            ).strip()
         # write it back into the template so next run doesn’t ask again
         consultant_cell.Value = full_name_input
+
 
     full_name, short_name = parse_consultant_name(full_name_input)
 
