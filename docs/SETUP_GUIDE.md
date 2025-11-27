@@ -1,191 +1,332 @@
-# 🛠️ SpringAhead Timesheet Automation – Setup Guide
+# 🛠️ SpringAhead Timesheet Generator – Setup & Usage Guide (v2.0.0)
 
-This guide walks you through installing everything required to run the SpringAhead automation scripts on Windows 10 or Windows 11.
+This guide explains how to use the new GUI version, the standalone Windows executable, and how to run the project from source for development.
 
 ---
 
-## 🧰 1. Requirements
+# 📦 1. Overview
 
-### Operating System
+This project automates:
+
+1. **Scraping worked hours from SpringAhead** (via Playwright)
+2. **Generating a professional PDF invoice** (via Excel Automation)
+
+Version **2.0.0** introduces:
+
+- A full **Graphical User Interface (GUI)**
+- A standalone **Windows executable** (`InvoiceGenerator.exe`)
+- Better logging, safer file handling, and improved stability
+
+---
+
+# 🚀 2. Quick Start (Recommended for Regular Users)
+
+This is the easiest way to use the tool — **no Python required**.
+
+### ✅ Requirements
 - Windows 10 or Windows 11
+- Microsoft Excel (desktop version)
+- A SpringAhead account with timecard access
 
-### Applications
-- **Microsoft Excel (desktop)**  
-  Required for filling the invoice template and exporting the PDF.
+### 📁 Files to Download
+From the latest GitHub Release:
 
-### Python
-- **Python 3.10 or newer**
+- **`InvoiceGenerator.exe`**
+- **`INVOICE (Template).xls`**
 
-If you don’t have Python:
+> ⚠ Place both files in the **same folder**.
 
-1. Go to the official download page: https://www.python.org/downloads/
-2. Download the latest Python 3.x for Windows.
-3. **Important:** During install, check the box:
-   - `Add Python to PATH`
+---
 
-### SpringAhead Account
-- A valid SpringAhead account with access to your timecard.
+## ▶️ How to Use the EXE
 
-## 2. Get the project files
+1. Create a folder, e.g.  
+   `D:\SpringAheadTimeSheetGenerator\`
 
-You can get the project in one of two ways:
+2. Put these files inside it:
+- ``InvoiceGenerator.exe``
+- ``INVOICE (Template).xls``
 
-### Option A – Download as ZIP (simple)
+3. Double-click **InvoiceGenerator.exe**.
 
-1. Go to the GitHub repository page.
-2. Click the green **Code** button.
-3. Click **Download ZIP**.
-4. Extract it somewhere easy, for example:
-   - `C:\SpringAheadAutomation`
+4. On first run, enter your:
+- Company  
+- Login Name  
+- Password  
 
-You should end up with something like:
+(Optional) Check **“Save credentials to MyCreds.env”**  
+→ the app will create `MyCreds.env` automatically.
 
-```text
-C:\SpringAheadAutomation\
-  springahead_step1_fetch.py
-  springahead_step2_invoice.py
-  timesheet_master.py
-  INVOICE (Template).xls
-  requirements.txt      (if included)
-```
-### Option B – Using Git (for Git users)
-If you have Git installed, you can clone instead:
+5. Choose a mode:
+- **Full pipeline (recommended)**
+- **Step 1 only** – scrape worked hours (JSON)
+- **Step 2 only** – generate invoice from JSON
 
-```
-git clone https://github.com/AOHF92/SpringAheadTimesheetAutomation.git
-cd springahead-timesheet-automation
-```
-## 3. Install Python dependencies
-The simplest way is to install everything globally on your system.   
-Open Command Prompt or PowerShell, go to the project folder, for example:
+6. Click **Start**.
+
+7. When the process completes, you will find:
+- `springahead_current_week.json`
+- A new PDF invoice like:  
+  `J. Pepin INV (MM-DD-YYYY).pdf`
+
+All generated files appear in the **same folder as the EXE**.
+
+---
+
+# 🛠️ 3. Developer Setup (Run From Source)
+
+If you want to modify or run the project via Python, follow this section.
+
+---
+
+# 📥 3.1 Download the Project
+
+### Option A — Download ZIP
+1. Go to the GitHub repo → **Code** → **Download ZIP**
+2. Extract anywhere, e.g.  
+`C:\SpringAheadAutomation\`
+
+### Option B — Clone with Git
 ```bash
-cd C:\SpringAheadAutomation
+git clone https://github.com/AOHF92/SpringAheadTimesheetAutomation.git
+cd SpringAheadTimesheetAutomation
 ```
+### Your folder should contain:
+```java
+springahead_gui.py
+springahead_step1_fetch.py
+springahead_step2_invoice.py
+timesheet_master.py
+INVOICE (Template).xls
+requirements.txt
+```
+---
 
-### 3.1 Using requirements.txt (recommended)
-Run the following:
+## 🐍 3.2 Install Python
+
+Download Python from:
+
+https://www.python.org/downloads/
+
+During installation, make sure to check:
+
+- ✅ **Add Python to PATH**
+
+---
+
+## 📦 3.3 Install Dependencies
+
+Open **Command Prompt** or **PowerShell** inside the project directory.
+
+### Recommended (using `requirements.txt`)
+
 ```bash
 pip install -r requirements.txt
+python -m playwright install chromium
 ```
-
-This will install all required packages, such as:  
-
-- playwright
-- python-dotenv
-- pywin32
-
-Then install the Playwright browsers:
+Manual install (alternative)
 ```bash
-playwright install
+pip install playwright python-dotenv pywin32 gooey
+python -m playwright install chromium
 ```
 
-### 3.2 Without requirements.txt:
-You can also install the dependecies manually as an alternative:
+# 🔐 4. Credentials (`MyCreds.env`)
+
+Your SpringAhead credentials are stored in a local file called **MyCreds.env**.
+
+### 📄 File Format
+
+```env
+SPRINGAHEAD_COMPANY=YourCompany
+SPRINGAHEAD_USERNAME=yourlogin
+SPRINGAHEAD_PASSWORD=yourpassword
 ```
-pip install playwright python-dotenv pywin32
-playwright install
-```
+### How to Create It
 
-## 4 Invoice Template
-The project uses an Excel file named:
-```text
-INVOICE (Template).xls
-```
-- A sanitized template is included in the repo.
-- Keep this file in the **same folder** as the python scripts
-Note:
-> If you customize it, keep the same filename and general layout expected by the script
-(consultant name cell, invoice number cell, period cell, time entry rows, etc.).
+#### ✅ Option A – Automatic (Recommended)
 
-## 5. Configure credentials (MyCreds.env)
-The script uses a local file named ```MyCreds.env``` to store your SpringAhead login info.
+If `MyCreds.env` is missing, the GUI will:
 
-### Option A - Let the script create it
-If ```MyCreds.env``` is missing or incomplete:
+1. Prompt you for your SpringAhead login details  
+2. Offer to save them into `MyCreds.env` for future runs
 
-- The script will ask you for: 
+The file will be created in the **same folder** as:
 
- - Company
- - Login Name
- - Password
-
-- It will then offer to save those values into ```MyCreds.env``` for future runs.
-
-Note: 
-> ```MyCreds.env``` is a plain-text file. Keep it private and do not share it.
-
-## 6. Running the automation
-
-The easiest way to use the project is via the **master script**.
-
-### 6.1 Run from the terminal
-In Command Prompt or PowerShell, from the project folder:
-```bash
-python timesheet_master.py
-```
-What it will do:
-
-1. Use Playwright to log into SpringAhead
-2. Scrape your current week’s worked days
-3. Save them into springahead_current_week.json
-4. Open the Excel template
-5. Fill in the invoice with your hours
-6. Export a PDF invoice
-
-At the end, you should see a new PDF invoice in the same folder.
-
-### 6.2 Run by double-click (Windows Explorer)
-
-You can also:
-
-1. Open the project folder in Explorer
-2. Double-click ```timesheet_master.py```
-
-A console window will open and run the same process.
-The script is written to pause at the end so you can read any messages before the window closes.
+- `InvoiceGenerator.exe` (EXE users), or  
+- the Python scripts (source/development users)
 
 ---
 
-## Optional: Using a virtual environment
+#### ✏️ Option B – Manual Creation
 
-This section is optional.
-You **do not** need a virtual environment to use this project.
+Create a new file named `MyCreds.env` in the same directory as the EXE or scripts.
 
-A virtual environment is useful if:
+Use this format:
+```yaml
+SPRINGAHEAD_COMPANY=YourCompany
+SPRINGAHEAD_USERNAME=yourlogin
+SPRINGAHEAD_PASSWORD=yourpassword
+```
+> ⚠ **Warning:**  
+> `MyCreds.env` is plain text.  
+> Do **not** upload it to GitHub or share it with others.
 
-- You work on multiple Python projects, or
-- You want to keep this project’s dependencies isolated.
+---
 
-### 1. Create a virtual environment
-From the project folder:
-```bash
+# 📄 5. Excel Template — `INVOICE (Template).xls`
+
+This file is required for generating your invoice PDF.
+
+### Placement Requirements
+
+It **must** be located in the same folder as:
+
+- `InvoiceGenerator.exe` (when using the EXE)
+- The Python scripts (when running from source)
+
+Your folder should look like:
+```yaml
+InvoiceGenerator.exe
+INVOICE (Template).xls
+MyCreds.env (optional; created automatically)
+```
+### Notes on Customizing the Template
+
+- You may modify the visual layout  
+- However, keep the same filename  
+- And keep the fields/cells the script expects  
+  (e.g., consultant name, invoice number, billing period, rows for hours)
+
+Changing those requires updating the Python code.
+
+---
+
+# ▶️ 6. Running the Program (From Source)
+
+If you are developing or modifying the project, you can run it directly in Python.
+
+---
+
+## 🖥️ 6.1 Using the GUI (Recommended)
+
+From the project directory:
+```python
+python springahead_gui.py
+```
+Steps:
+
+1. Enter (or confirm) your credentials  
+2. Choose the mode:
+   - **Full pipeline**
+   - **Step 1 only** (scrape → JSON)
+   - **Step 2 only** (JSON → PDF)
+3. Click **Start**
+4. Watch progress appear in the GUI output panel
+
+This provides the same workflow as the standalone EXE.
+
+---
+
+## 🤖 6.2 Running the Master Script Directly
+
+The old CLI behavior still works:
+```python
+python timesheet_master.py
+```
+This will:
+
+1. Start Playwright  
+2. Log into SpringAhead  
+3. Scrape your worked hours  
+4. Store them in `springahead_current_week.json`  
+5. Fill the Excel invoice template  
+6. Export the invoice as a PDF
+
+Useful for debugging or terminal-based workflows.
+
+---
+
+# 🔧 7. Optional: Virtual Environment (For Developers)
+
+A virtual environment isolates dependencies and prevents conflicts with other Python projects.
+
+---
+
+## 7.1 Create the Environment
+
+```shell
 python -m venv .venv
 ```
-### 2. Activate it (Windows)
-```bash
-.\.venv\Scripts\activate
+
+## 7.2 Activate the Environment (Windows)
+
+```sql
+..venv\Scripts\activate
 ```
-You should see something like:
-```bash
-(.venv) C:\SpringAheadAutomation>
-```
-### 3. Install dependencies inside the venv
+
+Your prompt should now start with:
+``` (.venv) ```
+
+## 7.3 Install Dependencies Inside the venv
+
+With the virtual environment activated, install all necessary packages:
+
 ```bash
 pip install -r requirements.txt
-playwright install
+python -m playwright install chromium
 ```
-or:
+
+Or install them manually:
+
 ```bash
-pip install playwright python-dotenv pywin32
-playwright install
+pip install playwright python-dotenv pywin32 gooey
+python -m playwright install chromium
 ```
-Then run the script:
-```bash
-python timesheet_master.py
+
+This ensures the GUI, Playwright browser automation, Excel automation, and environment variable loader all work correctly.
+
+---
+
+## 7.4 Run the GUI
+
+Once dependencies are installed, launch the application:
+
+```python
+python springahead_gui.py
 ```
-### 4. Deactive the virtual environment:
-When you're done:
+
+You will see the full graphical interface where you can:
+
+- Enter your SpringAhead credentials  
+- Select the pipeline mode  
+- Generate invoices  
+- Save credentials to `MyCreds.env` (optional)  
+
+This is the same interface bundled into the EXE.
+
+---
+
+## 7.5 Deactivate the venv
+
+When you are finished working in the environment:
 ```bash
 deactivate
 ```
+
+Your terminal prompt will return to normal, and your global Python installation will no longer be affected by this project’s dependencies.
+
+---
+
+# 🏁 8. Output Files
+
+After running the automation (either via EXE or source), the following files will appear in the same folder:
+
+```yaml
+MyCreds.env # created only if you choose to save credentials
+springahead_current_week.json # raw scraped worked-hours data
+YourName INV (MM-DD-YYYY).pdf # the generated invoice
+```
+
+All outputs are always written to the folder containing the EXE or the Python scripts.
+
 ---
