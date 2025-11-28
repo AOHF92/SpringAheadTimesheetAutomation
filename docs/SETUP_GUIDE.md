@@ -246,7 +246,7 @@ Useful for debugging or terminal-based workflows.
 
 ---
 
-# 🔧 7. Optional: Virtual Environment (For Developers)
+# 🔧 7. Optional: Virtual Environment
 
 A virtual environment isolates dependencies and prevents conflicts with other Python projects.
 
