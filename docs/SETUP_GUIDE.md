@@ -19,7 +19,7 @@ Version **2.0.0** introduces:
 
 ---
 
-# 🚀 2. Quick Start (Recommended for Regular Users)
+# 🚀 2. Quick Start 
 
 This is the easiest way to use the tool — **no Python required**.
 
