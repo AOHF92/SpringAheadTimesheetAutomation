@@ -1,4 +1,4 @@
-# 🛠️ SpringAhead Timesheet Generator – Setup & Usage Guide (v2.0.0)
+# 🛠️ SpringAhead Timesheet Generator – Setup & Usage Guide 
 
 This guide explains how to use the new GUI version, the standalone Windows executable, and how to run the project from source for development.
 
