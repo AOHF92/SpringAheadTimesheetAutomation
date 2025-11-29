@@ -19,17 +19,20 @@ from datetime import datetime, timedelta
 import win32com.client as win32
 import win32timezone
 
+
 def get_app_root():
     if getattr(sys, "frozen", False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
 
+
 SCRIPT_DIR = get_app_root()
 JSON_PATH = os.path.join(SCRIPT_DIR, "springahead_current_week.json")
-TEMPLATE_PATH = os.path.join(SCRIPT_DIR, "INVOICE (Template).xls")
+TEMPLATE_PATH = os.path.join(SCRIPT_DIR, "INVOICE (Template).xlsx")
 
 
 # ---------- Helpers ----------
+
 
 def load_entries_from_json(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -144,6 +147,7 @@ def compute_time_blocks(total_hours):
 
 # ---------- Main Excel logic ----------
 
+
 def main():
     if not os.path.exists(JSON_PATH):
         raise FileNotFoundError(f"JSON not found: {JSON_PATH}")
@@ -171,6 +175,7 @@ def main():
     full_name_env = os.getenv("SPRINGAHEAD_FULL_NAME", "").strip()
 
     if full_name_env:
+        # GUI provided a name
         full_name_input = full_name_env
         # also write it into the template so next runs don't need GUI
         consultant_cell.Value = full_name_input
@@ -180,18 +185,26 @@ def main():
         full_name_input = existing_name
 
     else:
-        # CLI fallback only – in GUI this would hang, so make sure you
-        # either fill the Consultant cell in Excel or use the GUI field.
-        full_name_input = input(
-            "Enter your full name (first + one or two last names): "
-        ).strip()
-        while not full_name_input:
+        # No env var and no name in template.
+        # If we have a real TTY (CLI), we can prompt.
+        # In GUI/EXE there is no TTY, so raising an error avoids a hang.
+        if sys.stdin is not None and sys.stdin.isatty():
             full_name_input = input(
-                "Name cannot be empty. Please enter full name: "
+                "Enter your full name (first + one or two last names): "
             ).strip()
-        # write it back into the template so next run doesn’t ask again
-        consultant_cell.Value = full_name_input
-
+            while not full_name_input:
+                full_name_input = input(
+                    "Name cannot be empty. Please enter full name: "
+                ).strip()
+            # write it back into the template so next run doesn’t ask again
+            consultant_cell.Value = full_name_input
+        else:
+            raise RuntimeError(
+                "Consultant name is missing.\n\n"
+                "Please do ONE of the following and run the app again:\n"
+                "- Fill the 'Consultant full name' field in the GUI, or\n"
+                "- Type your name into cell B6 of the invoice template."
+            )
 
     full_name, short_name = parse_consultant_name(full_name_input)
 
@@ -212,11 +225,6 @@ def main():
         period_cell = ws.Cells(5, 5)  # E5
         period_cell.Value = period_str
 
-        # OPTIONAL: write full name into Consultant cell if you want.
-        # If you tell me the exact row/col for that, we can add it here.
-        # For now, we leave the Consultant area as-is so the template
-        # stays generic for your coworkers.
-
         # ----- Clear only A–D rows 9–38 -----
         first_data_row = 9
         last_data_row = 38
@@ -234,7 +242,7 @@ def main():
                 print("Warning: not enough rows in template to fit all entries.")
                 break
 
-            date_str = entry["date"]     # e.g. "11/2/2025"
+            date_str = entry["date"]  # e.g. "11/2/2025"
             hours_val = float(entry["hours"])
             dt = datetime.strptime(date_str, "%m/%d/%Y")
 
@@ -278,10 +286,8 @@ def main():
             return
 
     finally:
-        # When you're happy with it, uncomment to auto-close:
         wb.Close(SaveChanges=True)
         excel.Quit()
-        pass
 
 
 if __name__ == "__main__":

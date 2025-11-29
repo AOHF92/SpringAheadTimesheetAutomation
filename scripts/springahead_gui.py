@@ -1,6 +1,6 @@
 from gooey import Gooey, GooeyParser
 from pathlib import Path
-import os, sys, io
+import os, sys, io, datetime, ctypes
 
 import timesheet_master as tm
 import springahead_step1_fetch as step1
@@ -11,17 +11,23 @@ def get_app_root() -> Path:
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent
 
+APP_ROOT = get_app_root()
+
 # Force a predictable stdout encoding for Gooey/PyInstaller combo
 if sys.stdout and not sys.stdout.encoding:
     sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding="utf-8", errors="replace", line_buffering=True)
 
 @Gooey(
     program_name="SpringAhead Invoice Generator",
+    image_dir=str(APP_ROOT),   # <-- top-left window icon
     default_size=(800, 600),
     required_cols=1,
     optional_cols=1,
     clear_before_run=True,
     show_success_modal=True,
+    show_failure_modal=False,   # ⬅ show summary modal on failure
+    show_error_modal=True,     # ⬅ show an alert popup on failure
+    show_restart_button=False, # ⬅ hide the Restart button (next section)
 )
 def main():
     # Make sure we run from this script's folder (like your master script does)
@@ -157,7 +163,7 @@ def main():
     try:
         if mode.startswith("Full pipeline"):
             # Use your existing orchestration logic
-            tm.main()
+            tm.main(gui_mode=True)
 
         elif mode.startswith("Step 1 only"):
             step1.main()
@@ -169,14 +175,54 @@ def main():
             raise ValueError(f"Unknown mode: {mode}")
 
     except Exception as e:
-        # Let Gooey show an error in its console
+        import traceback
+
+        # Short, user-friendly message in the Gooey Status box
         print("\n[ERROR] Something went wrong during execution.")
         print(f"Reason: {e}")
-        # If you want full traceback inside Gooey's console:
-        import traceback
-        traceback.print_exc()
-        # Non-zero exit so Gooey shows failure state
+        print(
+            "\nDetails have been saved to 'SpringAhead_Errors.log' "
+            "in the same folder as this program."
+        )
+
+        # Write full traceback to a log file in the app folder
+        log_path = base_dir / "SpringAhead_Errors.log"
+        try:
+            # 'a' = Adds new content and keeps the old ones.
+            # 'w' = overwrite old content, keep only the latest error
+            with log_path.open("w", encoding="utf-8") as f:
+                f.write("=" * 70 + "\n")
+                f.write(
+                    f"Timestamp: {datetime.datetime.now().isoformat(timespec='seconds')}\n"
+                )
+                f.write(f"Mode: {mode}\n")
+                f.write("Traceback:\n")
+                traceback.print_exc(file=f)
+                f.write("\n")
+        except Exception as log_err:
+            # If logging itself fails, at least warn in the GUI
+            print(f"[WARN] Failed to write error log: {log_err}")
+        # Show a custom Windows popup with the real error message
+        try:
+            msg = (
+                f"{e}\n\n"
+                "Details have been saved to 'SpringAhead_Errors.log' "
+                "in the same folder as this program."
+            )
+            if sys.platform.startswith("win"):
+                # MB_ICONERROR | MB_SYSTEMMODAL
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    msg,
+                    "SpringAhead Invoice Generator - Error",
+                    0x10 | 0x00001000,
+                )
+        except Exception:
+            # If the popup fails for any reason, just ignore it.
+            pass
+        # Non-zero exit so Gooey shows the red failure screen + popup
         sys.exit(1)
+
 
 
 if __name__ == "__main__":

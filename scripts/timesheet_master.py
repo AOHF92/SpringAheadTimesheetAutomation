@@ -28,7 +28,7 @@ def log(msg: str = ""):
     safe = str(msg).encode("ascii", "replace").decode("ascii")
     print(safe, flush=True)
 
-def main():
+def main(gui_mode=False):
     # Make sure we're running from the folder where this script lives
     base_dir = get_app_root()
     os.chdir(base_dir)
@@ -42,11 +42,15 @@ def main():
     try:
         step1.main()
     except Exception as e:
+        if gui_mode:
+            # Let the GUI's outer try/except handle logging & popup
+            raise
         log("\n[ERROR] Step 1 (SpringAhead fetch) failed.")
         log(f"Reason: {e}")
         traceback.print_exc()
         _pause_if_double_clicked()
         return
+
 
     json_path = base_dir / "springahead_current_week.json"
     if not json_path.exists():
@@ -64,6 +68,9 @@ def main():
         step2_main()
         log("[INFO] Step 2 completed successfully.")
     except pywintypes.com_error as e:
+        if gui_mode:
+            # Let GUI show the error; don't swallow it here
+            raise
         # Excel "Call was rejected by callee."
         if getattr(e, "hresult", None) == -2147418111:
             log("\n[ERROR] Step 2 (Excel/PDF) failed.")
@@ -82,7 +89,10 @@ def main():
             _pause_if_double_clicked()
             return
     except Exception as e:
-        # Non-COM errors in Step 2
+        if gui_mode:
+            # This includes our RuntimeError("Consultant name is missing...")
+            raise
+        # Non-COM errors in Step 2 (CLI mode only)
         log("\n[ERROR] Step 2 (Excel/PDF) failed.")
         log(f"Reason: {e}")
         traceback.print_exc()
@@ -94,7 +104,9 @@ def main():
     log(f"  - JSON file: {json_path.name}")
     log("  - A new PDF invoice in this same folder (named like 'J. Pepin INV (...).pdf').")
 
-    _pause_if_double_clicked()
+    if not gui_mode:
+        _pause_if_double_clicked()
+
 
 
 

@@ -48,10 +48,11 @@ def load_credentials():
       2. .env file
       3. Interactive prompt (only if still incomplete)
     """
+    """
     # Debug tracking
     print(f"[DEBUG] CWD: {Path.cwd()}")
     print(f"[DEBUG] Looking for creds at: {ENV_PATH} (exists={ENV_PATH.exists()})")
-
+    """
     # --- 1) Environment variables (GUI sets these) ---
     company = os.getenv("SPRINGAHEAD_COMPANY") or ""
     username = os.getenv("SPRINGAHEAD_USERNAME") or ""
