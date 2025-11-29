@@ -2,7 +2,10 @@ import os
 import sys
 from pathlib import Path
 import traceback
-import pywintypes
+try:
+    import pywintypes  # type: ignore
+except ImportError:
+    pywintypes = None  # not available on this platform
 from springahead_step2_invoice import main as step2_main
 
 import springahead_step1_fetch as step1
@@ -64,40 +67,43 @@ def main(gui_mode=False):
 
     # ---------- STEP 2 ----------
     log("[2/2] Running Step 2 – Filling Excel invoice and exporting PDF...")
+    # ---------- STEP 2 ----------
+    log("[2/2] Running Step 2 – Filling Excel invoice and exporting PDF...")
     try:
         step2_main()
         log("[INFO] Step 2 completed successfully.")
-    except pywintypes.com_error as e:
+    except Exception as e:
         if gui_mode:
-            # Let GUI show the error; don't swallow it here
+            # Let the GUI show the error popup + log
             raise
-        # Excel "Call was rejected by callee."
-        if getattr(e, "hresult", None) == -2147418111:
-            log("\n[ERROR] Step 2 (Excel/PDF) failed.")
-            log("Reason: Excel rejected the automation call.")
-            log(
-                "\nMake sure ALL Excel windows and any EXCEL.EXE processes are closed, "
-                "then try again."
-            )
-            _pause_if_double_clicked()
-            return
+
+        # If pywintypes is available (Windows) and this is a COM error,
+        # keep your old, more specific messaging.
+        if pywintypes is not None and isinstance(e, pywintypes.com_error):
+            # Excel "Call was rejected by callee."
+            if getattr(e, "hresult", None) == -2147418111:
+                log("\n[ERROR] Step 2 (Excel/PDF) failed.")
+                log("Reason: Excel rejected the automation call.")
+                log(
+                    "\nMake sure ALL Excel windows and any EXCEL.EXE processes are closed, "
+                    "then try again."
+                )
+                _pause_if_double_clicked()
+                return
+            else:
+                log("\n[ERROR] Step 2 (Excel/PDF) failed with an unexpected COM error.")
+                log(e)
+                traceback.print_exc()
+                _pause_if_double_clicked()
+                return
         else:
-            # For any other COM error, keep the original traceback
-            log("\n[ERROR] Step 2 (Excel/PDF) failed with an unexpected COM error.")
-            log(e)
+            # Generic path (non-Windows or non-COM errors)
+            log("\n[ERROR] Step 2 (Excel/PDF) failed.")
+            log(f"Reason: {e}")
             traceback.print_exc()
             _pause_if_double_clicked()
             return
-    except Exception as e:
-        if gui_mode:
-            # This includes our RuntimeError("Consultant name is missing...")
-            raise
-        # Non-COM errors in Step 2 (CLI mode only)
-        log("\n[ERROR] Step 2 (Excel/PDF) failed.")
-        log(f"Reason: {e}")
-        traceback.print_exc()
-        _pause_if_double_clicked()
-        return
+
 
     log("\nAll steps completed successfully ")
     log("You should now have:")
